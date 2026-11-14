@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>claim2real</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="brand">
+        <div class="mark">
+          <img src="/static/logo.jpg" alt="" />
+        </div>
+        <div class="word">
+          <span class="name">claim2real</span>
+          <span class="tag">Hardware requirements</span>
+        </div>
+      </header>
+
+      <form id="chat-form" autocomplete="off">
+        <label class="sr-only" for="chat-input">Task</label>
+        <textarea
+          id="chat-input"
+          rows="2"
+          placeholder="Describe the cell, the parts, and the job"
+          required
+        ></textarea>
+        <button type="submit" id="send-btn">Generate</button>
+      </form>
+
+      <div id="think" class="think" hidden>
+        <canvas id="orb" width="48" height="48" aria-label="Working"></canvas>
+        <span>Specifying hardware</span>
+      </div>
+      <p id="error" class="error" hidden></p>
+
+      <section id="thread" class="thread" hidden></section>
+    </div>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>

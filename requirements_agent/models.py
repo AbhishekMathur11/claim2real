@@ -53,6 +53,7 @@ class RequirementsChecklist(BaseModel):
     problem_statement: str
     component_type: str
     search_terms: list[str] = Field(min_length=3, max_length=6)
+    software: list[str] = Field(default_factory=list)
     must_have: list[Constraint] = Field(min_length=1)
     nice_to_have: list[Constraint] = Field(default_factory=list)
     budget_usd: float | None = None
@@ -62,11 +63,28 @@ class RequirementsChecklist(BaseModel):
     assumptions: list[str] = Field(default_factory=list)
 
 
+class HardwareNeed(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    component_type: str
+    why: str = ""
+    software: list[str] = Field(default_factory=list)
+
+
+class SystemPlan(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    hardware: list[HardwareNeed] = Field(min_length=1, max_length=6)
+    software: list[str] = Field(default_factory=list)
+
+
 class RequirementsBundle(BaseModel):
-    """One or more Catalog-valid checklists. High-level jobs become several components."""
+    """Inventory plus Catalog-valid checklists."""
 
     model_config = ConfigDict(extra="ignore")
 
+    hardware: list[str] = Field(default_factory=list)
+    software: list[str] = Field(default_factory=list)
     checklists: list[RequirementsChecklist] = Field(min_length=1, max_length=6)
 
 
@@ -77,11 +95,20 @@ def parse_checklist(data: dict) -> RequirementsChecklist:
         raise SystemExit(f"RequirementsChecklist invalid:\n{exc}") from exc
 
 
+def parse_plan(data: dict) -> SystemPlan:
+    try:
+        return SystemPlan.model_validate(data)
+    except ValidationError as exc:
+        raise SystemExit(f"System plan invalid:\n{exc}") from exc
+
+
 def parse_bundle(data: dict, problem: str) -> RequirementsBundle:
     if "checklists" in data:
         items = data["checklists"]
-    else:
+    elif "component_type" in data:
         items = [data]
+    else:
+        raise SystemExit("RequirementsChecklist invalid: expected checklists[]")
     if not isinstance(items, list) or not items:
         raise SystemExit("RequirementsChecklist invalid: expected checklists[]")
     stamped = []
@@ -91,7 +118,15 @@ def parse_bundle(data: dict, problem: str) -> RequirementsBundle:
         item = dict(item)
         item["problem_statement"] = problem
         stamped.append(parse_checklist(item))
+    hardware = data.get("hardware") or [c.component_type for c in stamped]
+    software = data.get("software") or []
+    if hardware and isinstance(hardware[0], dict):
+        hardware = [h.get("component_type", "") for h in hardware]
     try:
-        return RequirementsBundle(checklists=stamped)
+        return RequirementsBundle(
+            hardware=[h for h in hardware if h],
+            software=list(software),
+            checklists=stamped,
+        )
     except ValidationError as exc:
         raise SystemExit(f"RequirementsChecklist invalid:\n{exc}") from exc

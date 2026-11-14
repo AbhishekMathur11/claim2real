@@ -1,6 +1,6 @@
 # Requirements agent
 
-Turns a robotics / physical-AI problem into Catalog-valid `RequirementsChecklist` JSON. A narrow part request becomes one checklist. A system (3D bin picking, factory mapping AMR) becomes 2–5 checklists — camera, arm, gripper, mobile base, lidar, compute — each with its own `search_terms` and numeric `must_have`. Field names match Catalog scoring (`config.CANONICAL_FIELDS`). No vendor search.
+Turns a robotics / physical-AI problem into Catalog-valid JSON. Two LLM steps: (1) infer hardware + paired software even if the user never named a camera or arm, (2) fill one `RequirementsChecklist` per hardware item with complete attributes. Field names match Catalog scoring (`config.CANONICAL_FIELDS`). No vendor search.
 
 ## Setup
 
