@@ -1,0 +1,6 @@
+telem-sdk>=0.4.0
+tavily-python
+openai>=1.40.0
+pydantic>=2.0
+python-dotenv>=1.0.1
+pytest

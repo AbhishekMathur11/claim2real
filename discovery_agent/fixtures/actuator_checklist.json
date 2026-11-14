@@ -1,0 +1,22 @@
+{
+  "checklists": [
+    {
+      "problem_statement": "6-DOF arm for pick-and-place. Need a joint actuator: >=10 Nm continuous torque, <=1.2 kg, CAN bus, under $500, ships to the US in <=3 weeks.",
+      "component_type": "robot joint actuator",
+      "search_terms": ["robot joint actuator", "quasi-direct drive actuator", "harmonic drive servo actuator", "planetary gear BLDC actuator"],
+      "must_have": [
+        {"field": "continuous_torque_nm", "operator": ">=", "value": 10, "unit": "N·m"},
+        {"field": "mass_kg", "operator": "<=", "value": 1.2, "unit": "kg"},
+        {"field": "comm_interface", "operator": "has", "value": "CAN", "unit": null}
+      ],
+      "nice_to_have": [
+        {"field": "feedback", "operator": "has", "value": "absolute encoder", "unit": null}
+      ],
+      "budget_usd": 500,
+      "max_lead_time_days": 21,
+      "ship_to": "US",
+      "quantity": 6,
+      "assumptions": ["Quantity assumed 6 (one per joint of a 6-DOF arm)"]
+    }
+  ]
+}

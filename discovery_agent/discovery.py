@@ -12,7 +12,7 @@ Flow
 Input is the Requirements agent's output ({"checklists": [...]} or a single checklist).
 A system problem yields several components; all are searched in ONE Telem session.
 
-CLI:  python -m agents.discovery fixtures/actuator_checklist.json [--component 0] [--out cache/discovery.json]
+CLI (from discovery_agent/):  python discovery.py fixtures/actuator_checklist.json [--component 0] [--out cache/discovery.json]
 """
 from __future__ import annotations
 

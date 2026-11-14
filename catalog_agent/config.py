@@ -1,9 +1,20 @@
-"""Settings loaded from .env plus tunable constants."""
+"""Settings loaded from .env plus tunable constants.
+
+Reads <this folder>/.env first, then the repo-root .env (first value wins), so one
+root .env can serve every agent folder.
+"""
 import os
+import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parent
+load_dotenv(HERE / ".env")
+load_dotenv(REPO_ROOT / ".env")
+if str(REPO_ROOT) not in sys.path:  # so `requirements_agent.config` is importable
+    sys.path.append(str(REPO_ROOT))
 
 TELEM_API_KEY = os.getenv("TELEM_API_KEY")
 TELEM_BASE_URL = os.getenv("TELEM_BASE_URL", "https://router.telem.ai")
@@ -36,3 +47,12 @@ DISCOVERY_RECENCY_DAYS = 548       # ~18 months
 DISCOVERY_MAX_POOL = 30            # hits shown to the shortlisting LLM
 SHORTLIST_SNIPPET_CHARS = 300      # snippet length in the shortlist prompt (~3k prompt tokens total)
 SNIPPET_CHARS = 600
+
+# Catalog reader
+FETCH_BATCH = 5
+FETCH_MAX_CHARS = 15000            # per page, sent to Telem as inline_max_chars and to the LLM
+MIN_PAGE_CHARS = 500               # below this a fetch is treated as failed -> Tavily fallback
+CATALOG_WORKERS = 4                # parallel LLM extractions
+# Fixed demo FX rates (shown in the report); update if needed.
+FX_TO_USD = {"USD": 1.0, "$": 1.0, "US$": 1.0, "EUR": 1.08, "€": 1.08, "GBP": 1.27, "£": 1.27,
+             "CNY": 0.14, "RMB": 0.14, "¥": 0.14, "JPY": 0.0067, "CAD": 0.73, "AUD": 0.66, "INR": 0.012}

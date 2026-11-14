@@ -1,7 +1,0 @@
-telem-sdk>=0.4.0
-tavily-python
-openai
-streamlit
-pydantic
-python-dotenv
-tldextract

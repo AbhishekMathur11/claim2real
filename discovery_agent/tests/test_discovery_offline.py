@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 from telem.models import ProviderRun, SearchResponse, SearchResult
 
 import llm
-from agents import discovery
+import discovery
 from models import load_checklists
 from telem_client import TelemRun
 
