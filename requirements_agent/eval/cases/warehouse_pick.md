@@ -1,0 +1,1 @@
+Dark-store grocery fulfillment. A robot should pick and pack SKUs from shelf bins into totes, targeting 200 units/hour. Indoor aisles, mixed SKU sizes, humans walking nearby. Do not choose vendors — only fundamental hardware and software requirements.

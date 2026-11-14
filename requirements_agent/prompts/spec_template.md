@@ -1,0 +1,36 @@
+{
+  "checklists": [
+    {
+      "problem_statement": "<raw user text>",
+      "component_type": "3D depth camera",
+      "search_terms": ["3D depth camera", "RGB-D camera", "structured light camera", "time of flight camera"],
+      "must_have": [
+        {"field": "sensing_modality", "operator": "has", "value": "RGB-D", "unit": null},
+        {"field": "working_distance_mm", "operator": ">=", "value": 400, "unit": "mm"},
+        {"field": "depth_accuracy_mm", "operator": "<=", "value": 2, "unit": "mm"},
+        {"field": "frame_rate_hz", "operator": ">=", "value": 15, "unit": "Hz"}
+      ],
+      "nice_to_have": [],
+      "budget_usd": 3000,
+      "max_lead_time_days": 30,
+      "ship_to": "US",
+      "quantity": 1,
+      "assumptions": ["Working distance inferred for tote bin picking"]
+    },
+    {
+      "problem_statement": "<raw user text>",
+      "component_type": "robot arm",
+      "search_terms": ["robot arm", "collaborative robot", "pick and place arm", "6-DOF manipulator"],
+      "must_have": [
+        {"field": "payload_kg", "operator": ">=", "value": 3, "unit": "kg"},
+        {"field": "reach_mm", "operator": ">=", "value": 700, "unit": "mm"}
+      ],
+      "nice_to_have": [],
+      "budget_usd": 25000,
+      "max_lead_time_days": 45,
+      "ship_to": "US",
+      "quantity": 1,
+      "assumptions": []
+    }
+  ]
+}

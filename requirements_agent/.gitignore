@@ -1,0 +1,7 @@
+.env
+api.yaml
+.venv/
+__pycache__/
+eval/results/
+*.pyc
+.streamlit/

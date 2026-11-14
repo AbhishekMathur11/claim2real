@@ -1,0 +1,1 @@
+Cold-storage palletizing. In a freezer at -20 °C, a robot must pick 50 kg rice bags from a conveyor and stack them on pallets. Narrow aisles, frost, gloved workers nearby. Do not choose vendors — only fundamental hardware and software requirements.

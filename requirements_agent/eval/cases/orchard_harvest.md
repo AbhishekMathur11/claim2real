@@ -1,0 +1,1 @@
+Outdoor apple orchard harvest assist. A mobile system should detect ripe fruit and pick without bruising, about 80 fruit per hour per robot, trees in rows, uneven ground, sun and shadow. Do not choose vendors — only fundamental hardware and software requirements.

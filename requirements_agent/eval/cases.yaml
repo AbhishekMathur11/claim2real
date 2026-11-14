@@ -1,0 +1,44 @@
+- id: warehouse_pick
+  problem_file: cases/warehouse_pick.md
+  min_checklists: 1
+  require_fields:
+    - payload_kg
+  require_min:
+    payload_kg: 1
+
+- id: orchard_harvest
+  problem_file: cases/orchard_harvest.md
+  min_checklists: 1
+  require_fields:
+    - payload_kg
+  require_min:
+    payload_kg: 0.1
+
+- id: freezer_bags
+  problem_file: cases/freezer_bags.md
+  min_checklists: 1
+  require_fields:
+    - payload_kg
+    - operating_temp_min_c
+  require_min:
+    payload_kg: 50
+
+- id: bin_picking_3d
+  problem_file: cases/bin_picking_3d.md
+  min_checklists: 3
+  require_types:
+    - camera
+    - arm
+    - gripper
+  require_fields:
+    - depth_accuracy_mm
+    - payload_kg
+
+- id: factory_mapping
+  problem_file: cases/factory_mapping.md
+  min_checklists: 2
+  require_any:
+    - [lidar, camera]
+    - [mobile, amr, agv]
+  require_fields:
+    - localization_accuracy_mm
