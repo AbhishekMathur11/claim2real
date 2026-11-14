@@ -109,11 +109,20 @@ Write 5-8 short search-engine queries (3-10 words, no quotes or operators) cover
 Include at least one query per angle. Target product pages and datasheets, not tutorials."""
 
 
+_OPERATOR = re.compile(r"\b(site|inurl|intitle|filetype):\S+|[\"']", re.I)
+
+
+def clean_query(q: str) -> str:
+    """Strip search operators/quotes the LLM may add; scoping is done via include_domains."""
+    return re.sub(r"\s+", " ", _OPERATOR.sub(" ", q)).strip()
+
+
 def plan_queries(c: RequirementsChecklist) -> list[PlannedQuery]:
     try:
         user = f"Today is {date.today().isoformat()}.\n{c.model_dump_json(exclude={'assumptions'})}"
         plan = llm.call_json(PLAN_SYSTEM, user, QueryPlan, max_tokens=800)
-        planned = plan.queries[:8]
+        planned = [PlannedQuery(query=clean_query(q.query), angle=q.angle) for q in plan.queries[:8]]
+        planned = [q for q in planned if q.query]
     except Exception as e:  # noqa: BLE001 - never let planning kill the run
         print(f"[discovery] query plan LLM failed, using fallback: {e}", file=sys.stderr)
         planned = []
@@ -313,12 +322,14 @@ def main() -> None:
     ap.add_argument("--component", type=int, default=None, help="only this checklist index")
     ap.add_argument("--out", type=Path, default=Path("cache/discovery.json"))
     ap.add_argument("-n", type=int, default=None)
+    ap.add_argument("--session", default=None,
+                    help="join an existing Telem session (lets parallel runs share one session)")
     args = ap.parse_args()
 
     checklists = load_checklists(args.checklist)
     if args.component is not None:
         checklists = [checklists[args.component]]
-    run = TelemRun()
+    run = TelemRun(session_id=args.session)
     results = discover_all(checklists, run, args.n)
 
     print(f"\nTelem session: {run.session_id}")

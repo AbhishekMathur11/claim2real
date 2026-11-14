@@ -94,3 +94,8 @@ def test_page_kind_prefers_products():
     prod = H(url="https://www.robotshop.com/products/ak40", title="", snippet="", domain="robotshop.com")
     assert discovery.page_kind_score(prod) > 0 > discovery.page_kind_score(blog)
     assert discovery.page_kind_score(blog2) < 0
+
+
+def test_clean_query_strips_operators():
+    assert discovery.clean_query('robot joint actuator site:digikey.com') == "robot joint actuator"
+    assert discovery.clean_query('"CAN bus" actuator filetype:pdf') == "CAN bus actuator"

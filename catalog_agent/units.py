@@ -68,10 +68,37 @@ def to_usd(amount: float | None, currency: str | None) -> float | None:
     return round(amount * rate, 2) if rate else None
 
 
+# Categorical synonyms: required value (lowercase) -> spellings that count as a match on a page.
+CATEGORY_ALIASES = {
+    "absolute encoder": ["absolute", "abs-", "abs ", "multi-turn", "multiturn", "single-turn absolute"],
+    "can": ["can bus", "canbus", "can fd", "canopen", "can 2.0"],
+    "ethercat": ["ethercat"],
+    "rs485": ["rs485", "rs-485"],
+    "incremental encoder": ["incremental"],
+}
+# Categorical fields where the page lists the full set, so a non-match is a real "fails".
+EXHAUSTIVE_CATEGORICAL = {"comm_interface"}
+
+
+_GENERIC = re.compile(r"\b(bus|interface|protocol|communication|comms?|port|support(ed)?)\b")
+
+
+def _core(value: str) -> str:
+    """'CAN bus interface' -> 'can'; keeps meaningful words only."""
+    return re.sub(r"\s+", " ", _GENERIC.sub(" ", str(value).lower())).strip(" ,;/")
+
+
+def has_match(required: str, actual: str) -> bool:
+    req, act = _core(required) or str(required).lower().strip(), " " + str(actual).lower() + " "
+    if re.search(r"(?<![a-z0-9])" + re.escape(req), act):
+        return True
+    return any(alias in act for alias in CATEGORY_ALIASES.get(req, []))
+
+
 def check(operator: str, required: float | int | str, actual: float | str) -> bool:
     """Does `actual` satisfy `operator required`? Values must already be in the same unit."""
     if operator == "has":
-        return bool(re.search(r"(?<![a-z0-9])" + re.escape(str(required).lower()), str(actual).lower()))
+        return has_match(str(required), str(actual))
     a, r = parse_number(actual), parse_number(required)
     if a is None or r is None:
         return False

@@ -1,3 +1,4 @@
 data/current.json
 __pycache__/
 .venv/
+data/runs/

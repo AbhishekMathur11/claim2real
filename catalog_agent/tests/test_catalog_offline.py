@@ -91,3 +91,22 @@ def test_unreadable_and_llm_failure(monkeypatch):
                                        TelemRun(client=client, session_id="s1"))
     assert ok.page_status == "extraction_failed" and blocked.page_status == "unreadable"
     assert ok.requirement_fit["continuous_torque_nm"] == "unknown"
+
+
+def test_categorical_aliases_and_unknown():
+    assert units.check("has", "absolute encoder", "ABS-17bit")
+    assert units.check("has", "absolute encoder", "Dual Encoder ABS-17BIT (Input)")
+    assert units.check("has", "CAN", "CANopen, EtherCAT")
+    assert not units.check("has", "CAN", "EtherCAT")
+    from models import Claim
+    claims = [Claim(field="feedback", value="18-bit", unit=None, quote="q", source_url="u"),
+              Claim(field="comm_interface", value="EtherCAT", unit=None, quote="q", source_url="u")]
+    fit = catalog.compute_fit(claims, CHECK, None)
+    assert fit["feedback"] == "unknown"        # "18-bit" doesn't say absolute or not
+    assert fit["comm_interface"] == "fails"    # interface list is explicit: no CAN
+
+
+def test_generic_words_in_requirement():
+    assert units.check("has", "CAN bus", "CAN, UART")
+    assert units.check("has", "CAN bus interface", "CANopen")
+    assert not units.check("has", "CAN bus", "EtherCAT, RS485")

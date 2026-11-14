@@ -1,3 +1,6 @@
 -r ../requirements_agent/requirements.txt
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
+-r ../discovery_agent/requirements.txt
+-r ../catalog_agent/requirements.txt
+-r ../verifier_agent/requirements.txt

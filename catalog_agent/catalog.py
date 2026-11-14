@@ -167,14 +167,18 @@ def build_profile(cand: Candidate, page: str, engine: str, ex: Extraction | None
     page_norm = _norm(page)
     allowed = _fields_for(c)
     claims, dropped = [], 0
+    seen_fields: set[str] = set()
     for e in ex.claims:
         if e.field not in allowed or not quote_on_page(e.quote, page_norm) or not value_in_quote(e.value, e.quote):
             dropped += 1
+            continue
+        if e.field in seen_fields:  # one valid claim per field (the first, for the page's main product)
             continue
         conv = units.to_canonical(e.field, e.value, e.unit)
         value, unit = conv if conv else (e.value, e.unit)
         claims.append(Claim(field=e.field, value=value, unit=unit, quote=" ".join(e.quote.split()[:25]),
                             source_url=cand.url))
+        seen_fields.add(e.field)
 
     price_usd = price_quote = None
     if ex.price_amount is not None and ex.price_quote and quote_on_page(ex.price_quote, page_norm):
@@ -202,7 +206,13 @@ def compute_fit(claims: list[Claim], c: RequirementsChecklist, price_usd: float 
         mine = [cl for cl in claims if cl.field == req.field]
         for cl in mine:
             comparable = req.operator == "has" or cl.unit == req.unit or req.unit is None
-            cl.fit = ("meets" if units.check(req.operator, req.value, cl.value) else "fails") if comparable else "unknown"
+            if not comparable:
+                cl.fit = "unknown"
+            elif units.check(req.operator, req.value, cl.value):
+                cl.fit = "meets"
+            else:  # a non-matching categorical value only fails when the page lists the full set
+                exhaustive = req.operator != "has" or req.field in units.EXHAUSTIVE_CATEGORICAL
+                cl.fit = "fails" if exhaustive else "unknown"
         verdicts = {cl.fit for cl in mine}
         fit[req.field] = "meets" if "meets" in verdicts else "fails" if verdicts == {"fails"} else "unknown"
     if c.budget_usd is not None:
