@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Sequence
 
 from telem import Telem, TelemError
-from telem.models import SearchResponse
+from telem.models import FetchResult, SearchResponse
 
 import config
 from models import SearchTrace
@@ -49,3 +49,35 @@ class TelemRun:
                 results=len(run.results), usage=run.usage,
             ))
         return resp
+
+    def fetch(self, stage: str, urls: Sequence[str], *, chunk: int = 5, **kwargs: Any) -> dict[str, FetchResult]:
+        """Fetch URLs in chunks within this run's session. Returns {requested url: FetchResult}.
+
+        Failed URLs (server-side or a whole-chunk exception) map to a FetchResult with
+        status starting "error"/"failed" and no content, so callers can fall back per URL.
+        """
+        out: dict[str, FetchResult] = {}
+        urls = list(dict.fromkeys(urls))
+        for i in range(0, len(urls), chunk):
+            batch = urls[i:i + chunk]
+            params: dict[str, Any] = dict(kwargs)
+            if self.session_id:
+                params["session"] = self.session_id
+            try:
+                resp = self.client.fetch(batch, **params)
+                self.session_id = self.session_id or resp.session_id
+                rows = list(resp.results)
+            except TelemError as e:
+                rows = [FetchResult(url=u, status=f"error: {type(e).__name__}: {e}"[:300], batch_index=j)
+                        for j, u in enumerate(batch)]
+            for j, u in enumerate(batch):
+                # Results come back in request order; fall back to batch_index if lengths differ.
+                r = rows[j] if j < len(rows) else next((x for x in rows if x.batch_index == j), None)
+                r = r or FetchResult(url=u, status="failed: no result row", batch_index=j)
+                out[u] = r
+                self.traces.append(SearchTrace(
+                    stage=stage, kind="fetch", query_or_url=u, provider=r.provider or "telem",
+                    status=r.status or ("succeeded" if r.content else "failed"),
+                    latency_ms=r.latency_ms, results=1 if r.content else 0,
+                ))
+        return out

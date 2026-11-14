@@ -72,6 +72,13 @@ class CandidateProfile(BaseModel):
     availability: str | None = None
     contact: str | None = None
     extraction_engine: Literal["telem", "tavily"] = "telem"
+    # Additions (optional): per-requirement fit and page diagnostics for the UI/scoring.
+    product_name: str | None = None
+    requirement_fit: dict[str, Literal["meets", "fails", "unknown"]] = {}  # field -> fit ("budget" too)
+    price_quote: str | None = None
+    datasheet_urls: list[str] = []
+    page_status: str = "ok"  # "ok" | "unreadable" | "extraction_failed"
+    dropped_claims: int = 0  # LLM claims discarded because their quote was not on the page
 
 
 class Evidence(BaseModel):
