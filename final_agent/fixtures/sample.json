@@ -1,0 +1,15 @@
+{
+  "sender": {
+    "name": "Jane Doe",
+    "company": "Northwind Automation",
+    "context": "Specifying a screw-driving manipulator cell for an automotive engine component."
+  },
+  "targets": [
+    {
+      "company": "Universal Robots",
+      "domain": "universal-robots.com",
+      "products": ["UR5e"],
+      "kind": "hardware"
+    }
+  ]
+}
