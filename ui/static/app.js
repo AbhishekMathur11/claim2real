@@ -840,29 +840,13 @@ function renderAll() {
   renderLog();
 }
 
-// ---------------------------------------------------------------- boot: restore saved spec + latest run
+// ---------------------------------------------------------------- boot: every page load starts a new request
 
-(async function boot() {
+// A refresh is a clean slate: the previous spec and run are not restored (they stay on disk under
+// ui/data/, and a new Generate overwrites the saved spec). Only per-browser preferences survive:
+// candidates per requirement and the sender name/company used for outreach drafts.
+(function boot() {
+  $("problem-input").value = ""; // browsers may refill form fields on reload
   renderAll();
-  try {
-    const spec = await api("/api/spec");
-    if (spec && (spec.checklists || []).length) {
-      state.bundle = spec;
-      $("problem-input").value = spec.checklists[0].problem_statement || "";
-    }
-  } catch {
-    /* no saved spec */
-  }
-  try {
-    const run = await api("/api/run/latest");
-    const problem = state.bundle?.checklists?.[0]?.problem_statement;
-    if (run && run.problem === problem) {
-      state.run = run;
-      state.runRev = state.specRev;
-      if (run.state === "running") poll();
-    }
-  } catch {
-    /* no run yet */
-  }
-  renderAll();
+  $("problem-input").focus();
 })();
