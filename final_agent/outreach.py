@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -104,7 +105,7 @@ def _read_blob(path: Path) -> tuple[dict, str]:
 
 
 def parse_findings(raw: str) -> ParsedFindings:
-    return call_json(PARSE_SYS, raw[:50000], ParsedFindings, max_tokens=4096)
+    return call_json(PARSE_SYS, raw[:50000], ParsedFindings, max_tokens=16000)
 
 
 def write_report(sender: Sender, raw: str, parsed: ParsedFindings) -> str:
@@ -276,6 +277,18 @@ def run_target(sender: Sender, target: Target) -> CompanyOutreach:
     )
 
 
+def _safe_run_target(sender: Sender, target: Target) -> CompanyOutreach:
+    """One company's failure (search, people or drafts) must not drop every other company's outreach."""
+    try:
+        return run_target(sender, target)
+    except BaseException as exc:  # noqa: BLE001 - call_json raises SystemExit on bad JSON
+        if isinstance(exc, KeyboardInterrupt):
+            raise
+        print(f"[outreach] {target.company}: skipped ({str(exc).splitlines()[0][:160]})", file=sys.stderr, flush=True)
+        return CompanyOutreach(company=target.company, domain=target.domain, products=target.products,
+                               role=target.role, risk=target.risk, people=[], emails=[], queries=[], sources=[])
+
+
 def to_markdown(pack: OutreachPack) -> str:
     lines = [
         "# Outreach pack",
@@ -338,10 +351,13 @@ def main() -> None:
         args.context,
         args.max_companies,
     )
-    report = ""
-    if findings_text.strip() and parsed:
-        report = write_report(spec.sender, findings_text, parsed)
-    companies = [run_target(spec.sender, target) for target in spec.targets]
+    # The briefing and every company's people search + drafts are independent: run them all at once.
+    with ThreadPoolExecutor(max_workers=len(spec.targets) + 1) as pool:
+        report_job = (pool.submit(write_report, spec.sender, findings_text, parsed)
+                      if findings_text.strip() and parsed else None)
+        company_jobs = [pool.submit(_safe_run_target, spec.sender, target) for target in spec.targets]
+        companies = [job.result() for job in company_jobs]
+        report = report_job.result() if report_job else ""
     pack = OutreachPack(
         sender=spec.sender,
         report=report,

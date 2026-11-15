@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 from anthropic import Anthropic
@@ -47,6 +48,9 @@ def _complete(system: str, user: str, max_tokens: int) -> str:
     except Exception:
         kwargs.pop("output_config", None)
         response = client().messages.create(**kwargs)
+    if response.stop_reason == "max_tokens":  # cut off mid-output (big multi-requirement runs): retry once, doubled
+        kwargs["max_tokens"] = max_tokens * 2
+        response = client().messages.create(**kwargs)
     return "".join(
         getattr(block, "text", "")
         for block in response.content
@@ -65,5 +69,9 @@ def call_json(system: str, user: str, schema: type[BaseModel], max_tokens: int =
     raw = _complete(system, user, max_tokens)
     try:
         return schema.model_validate_json(_strip(raw))
+    except (ValidationError, ValueError):
+        pass
+    try:  # lenient: models often put raw newlines inside JSON strings (email bodies)
+        return schema.model_validate(json.loads(_strip(raw), strict=False))
     except (ValidationError, ValueError) as exc:
         raise SystemExit(f"Outreach JSON invalid:\n{exc}\n{raw[:800]}") from exc

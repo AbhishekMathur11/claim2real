@@ -14,6 +14,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 load_dotenv(HERE / ".env")
 load_dotenv(REPO / "requirements_agent" / ".env")
+load_dotenv(REPO / ".env")  # one repo-root .env serves every agent
 
 TAVILY_KEY_RE = re.compile(r"tvly-[A-Za-z0-9_-]+")
 ANTHROPIC_KEY_RE = re.compile(r"sk-ant-(?:api|oat|usr)[A-Za-z0-9_-]+")
