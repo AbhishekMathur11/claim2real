@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
@@ -16,7 +17,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 
 from config import CANONICAL_FIELDS
-from models import SystemPlan, parse_bundle, parse_plan
+from models import Constraint, SystemPlan, parse_bundle, parse_plan
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -203,6 +204,7 @@ LEQ_FIELDS = {
     "mass_kg",
     "angular_resolution_deg",
     "operating_temp_max_c",
+    "localization_accuracy_mm",
 }
 
 
@@ -216,14 +218,67 @@ def _as_list(value) -> list:
     return [value]
 
 
-def _as_constraints(value) -> list[dict]:
+_NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _first_number(raw) -> float | None:
+    """First number in a value like 40, "40 Nm", "$4,000" or "about 12 kg"."""
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    m = _NUMBER.search(re.sub(r"(?<=\d),(?=\d{3}\b)", "", str(raw)))
+    return float(m.group()) if m else None
+
+
+def _clean_row(item: dict, dropped: list[str] | None = None) -> dict | None:
+    """Repair one LLM constraint row, or drop it (noted in `dropped`) when it cannot be made valid.
+
+    The model sometimes leaves value null, writes "40 Nm" for a number, or uses "has" on a numeric
+    field. One bad row used to fail the whole spec; now only that row is lost.
+    """
+    field = str(item.get("field") or "").strip()
+    value = item.get("value")
+    if isinstance(value, dict) and "value" in value:  # model nested the row: {"operator": .., "value": ..}
+        item = {**item, "operator": value.get("operator", item.get("operator"))}
+        value = value["value"]
+    if field not in CANONICAL_FIELDS:
+        reason = "unknown field"
+    elif value is None or (isinstance(value, str) and not value.strip()) or value == []:
+        reason = "no value given"
+    else:
+        unit = CANONICAL_FIELDS[field]
+        if unit is None:  # categorical
+            row = {"field": field, "operator": "has",
+                   "value": ", ".join(map(str, value)) if isinstance(value, list) else str(value).strip(), "unit": None}
+        else:
+            number = _first_number(value)
+            if number is None:
+                row, reason = None, f"non-numeric value {value!r}"
+            else:
+                op = item.get("operator")
+                if op not in (">=", "<=", "=="):
+                    op = "<=" if field in LEQ_FIELDS else ">="
+                row = {"field": field, "operator": op, "value": int(number) if number.is_integer() else number,
+                       "unit": unit}
+        if row is not None:
+            try:
+                return Constraint.model_validate(row).model_dump()
+            except Exception as exc:  # noqa: BLE001
+                reason = str(exc).splitlines()[-1][:80]
+    if dropped is not None and field:
+        dropped.append(f"Dropped constraint {field} ({reason})")
+    return None
+
+
+def _as_constraints(value, dropped: list[str] | None = None) -> list[dict]:
     if not value:
         return []
     if isinstance(value, list):
         rows = []
         for item in value:
             if isinstance(item, dict) and "field" in item:
-                rows.append(item)
+                rows.append(_clean_row(item, dropped))
             elif isinstance(item, str) and ":" in item:
                 field, raw = item.split(":", 1)
                 rows.append(_constraint(field.strip(), raw.strip()))
@@ -281,19 +336,29 @@ def _coerce_checklist(item: dict) -> dict:
     terms = _as_list(item.get("search_terms"))
     if len(terms) < 3:
         terms = (terms + [name, f"{name} supplier", f"industrial {name}"])[:6]
-    must_have = _as_constraints(item.get("must_have")) or _default_constraints(name)
+    dropped: list[str] = []
+    must_have = _as_constraints(item.get("must_have"), dropped)
+    if not must_have:
+        must_have = _default_constraints(name)
+        dropped.append(f"No usable must-have constraints from the model; used defaults for {name}")
+    nice = _as_constraints(item.get("nice_to_have"), dropped)
     keep = {
         "problem_statement": item.get("problem_statement") or "",
         "component_type": name,
         "search_terms": terms[:6],
         "software": [str(x) for x in _as_list(item.get("software"))],
         "must_have": must_have,
-        "nice_to_have": _as_constraints(item.get("nice_to_have")),
-        "assumptions": [str(x) for x in _as_list(item.get("assumptions"))],
+        "nice_to_have": nice,
+        "assumptions": [str(x) for x in _as_list(item.get("assumptions"))] + dropped,
     }
-    for key in ("budget_usd", "max_lead_time_days", "ship_to", "quantity"):
-        if key in item:
-            keep[key] = item[key]
+    for key, kind in (("budget_usd", float), ("max_lead_time_days", int), ("quantity", int)):
+        number = _first_number(item.get(key))
+        if key == "max_lead_time_days" and number and "week" in str(item.get(key)).lower():
+            number *= 7
+        if number is not None and number > 0:
+            keep[key] = kind(number)
+    if isinstance(item.get("ship_to"), str) and item["ship_to"].strip():
+        keep["ship_to"] = item["ship_to"].strip()
     return keep
 
 
@@ -366,8 +431,7 @@ def specify(
     refine: str | None = None,
     extra: str = "",
 ) -> dict:
-    checklists = []
-    for item in plan.hardware:
+    def one(item) -> dict:
         user = (
             f"Fields:\n{_fields_block()}\n\n"
             f"Problem:\n{problem}\n\n"
@@ -395,7 +459,11 @@ def specify(
         data["component_type"] = item.component_type
         if not data.get("software"):
             data["software"] = item.software
-        checklists.append(data)
+        return data
+
+    # One Claude call per hardware item, run in parallel (order preserved by map).
+    with ThreadPoolExecutor(max_workers=max(1, len(plan.hardware))) as pool:
+        checklists = list(pool.map(one, plan.hardware))
     return {
         "hardware": [item.component_type for item in plan.hardware],
         "software": plan.software,
