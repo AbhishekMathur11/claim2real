@@ -2,6 +2,14 @@
 
 **Verified robotics sourcing: from a problem statement to a checked shortlist, a Build vs Buy call, and a list of people to contact.**
 
+### 🎬 Demo video
+
+**[▶ Watch the claim2real demo on Vimeo](https://vimeo.com/1246929956/fc1d84b773)**
+
+<!-- GitHub strips <iframe> tags from READMEs, so the player is linked instead of embedded.
+     Player embed for sites that allow iframes:
+     <iframe title="vimeo-player" src="https://player.vimeo.com/video/1246929956?h=fc1d84b773" width="640" height="360" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" allowfullscreen></iframe> -->
+
 ---
 
 ## 1. Executive summary
